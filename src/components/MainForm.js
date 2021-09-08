@@ -1,9 +1,8 @@
 import { useState } from "react";
-import { GladepayButton } from 'react-gladepay-2';
+import { useGladepayPayment } from 'react-gladepay-2';
 import { toast } from 'react-toastify';
 
 const MainForm = () => {
-  const MID = "GP0000001";
   const [email, setEmail] = useState('');
   const [amount, setAmount] = useState(0);
 
@@ -12,44 +11,67 @@ const MainForm = () => {
   }
 
   const handleAmount = ({ target: { value } }) => {
-    setAmount(value * 100);
+    setAmount(value);
   }
 
-  const callback = (response) => {
-    toast('You have donated Successfully');
+  const validateInputs = () => {
+    const re = /\S+@\S+\.\S+/;
+    return !re.test(email) || amount < 500;
   }
 
-  const close = () => {
-    console.log('payment closed');
+  const config = {
+    email,
+    amount,
+    MID: 'GP0000001',
+    country: "NG",
+    currency: "NGN",
+    logo: 'https://www.glade.ng/favicon-32x32.png',
+    payment_method: ['card', 'bank', 'ussd', 'qr', 'mobilemoney'],
+    is_production: false,
   }
+
+  // GladePay Hook Consumption
+  const Gladepay = () => {
+    const onSuccess = ({ chargedAmount }) => {
+      toast.success(`You have Successfully donated ₦${chargedAmount}`);
+      setEmail('');
+      setAmount(0);
+    }
+    const onClose = () => console.log('payment closed');
+
+    const initializePayment = useGladepayPayment(config);
+    return (
+      <div>
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            initializePayment(
+              onSuccess,
+              onClose
+            );
+          }}
+          disabled={validateInputs()}
+          className={"main-section__form--button"}
+        >
+          Donate Now
+        </button>
+      </div>
+    );
+  };
 
   return (
     <form action="" className="main-section__form">
-      <div>
-        <label htmlFor="main-section__form--input">Email</label>
-        <input type="email" onChange={handleEmail} className="main-section__form--input" placeholder="john@doe.com" />
+      <div className="main-section__form--input-container">
+        <div>
+          <label htmlFor="main-section__form--input">Email</label>
+          <input type="email" onChange={handleEmail} value={email} className="main-section__form--input" placeholder="john@doe.com" />
+        </div>
+        <div>
+          <label htmlFor="main-section__form--input">Amount (₦)</label>
+          <input type="number" onChange={handleAmount} value={amount} min="500" step="500" className="main-section__form--input" placeholder="₦500 Minimum" />
+        </div>
       </div>
-      <div>
-        <label htmlFor="main-section__form--input">Amount (₦)</label>
-        <input type="number" onChange={handleAmount} min="500" step="500" className="main-section__form--input" placeholder="₦1000" />
-      </div>
-      <div>
-        <GladepayButton
-          text="Donate Now"
-          className="main-section__form--button"
-          callback={callback}
-          close={close}
-          disabled={email === '' || amount === 0}
-          embed={true}
-          email={email}
-          amount={amount}
-          MID={MID}
-          country={"NG"}
-          currency={"NGN"}
-          tag="button"
-          is_production={false}
-        />
-      </div>
+      <Gladepay />
     </form>
   );
 }
